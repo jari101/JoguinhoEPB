@@ -777,7 +777,7 @@ html, body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 170px;
+  height: 210px;
   display: none;
   justify-content: space-between;
   align-items: flex-end;
@@ -822,10 +822,10 @@ html, body {
   pointer-events: auto;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 0.5rem;
+  grid-template-rows: 1fr 1fr 1fr;
+  gap: 0.4rem;
   width: 130px;
-  height: 130px;
+  height: 195px;
 }
 
 .touch-btn {
@@ -857,13 +857,35 @@ html, body {
   grid-column: 2;
   grid-row: 1;
 }
+.touch-pass {
+  background: rgba(0,200,100,0.22);
+  border: 2px solid #00cc66;
+  color: #88ffcc;
+  grid-column: 1;
+  grid-row: 2;
+  font-size: 0.7rem;
+}
+.touch-pass.pressing {
+  background: rgba(0,200,100,0.45);
+}
+.touch-power-kick {
+  background: rgba(220,30,30,0.22);
+  border: 2px solid #dd2222;
+  color: #ffaaaa;
+  grid-column: 2;
+  grid-row: 2;
+  font-size: 0.7rem;
+}
+.touch-power-kick.pressing {
+  background: rgba(220,30,30,0.45);
+}
 .touch-kick {
   background: rgba(255,255,255,0.12);
   border: 2px solid rgba(255,255,255,0.45);
   color: #fff;
   font-size: 0.72rem;
   grid-column: 1 / span 2;
-  grid-row: 2;
+  grid-row: 3;
   border-radius: 28px;
 }
 .touch-kick.pressing {
@@ -930,11 +952,11 @@ html, body {
 
 /* Landscape phone */
 @media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
-  .touch-controls { height: 130px; padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+  .touch-controls { height: 170px; padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
   .joystick-zone { width: 100px; height: 100px; }
   .joystick-base { width: 88px; height: 88px; }
   .joystick-knob { width: 38px; height: 38px; }
-  .action-btns { width: 110px; height: 110px; }
+  .action-btns { width: 110px; height: 165px; }
   .score-bar { height: 44px; }
   .timer-display { font-size: 1rem; }
   .team-score { font-size: 1.3rem; }
