@@ -738,10 +738,176 @@ html, body {
   margin-bottom: 0.5rem;
 }
 
+/* ── TOUCH CONTROLS ─────────────────────────────────────── */
+.touch-controls {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 170px;
+  display: none;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 1.25rem calc(72px + env(safe-area-inset-bottom));
+  pointer-events: none;
+  z-index: 98;
+}
+
+.joystick-zone {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 130px;
+  height: 130px;
+}
+
+.joystick-base {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.04);
+  border: 2px solid rgba(255,255,255,0.12);
+  position: relative;
+}
+
+.joystick-knob {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(77,128,255,0.45);
+  border: 2px solid rgba(77,128,255,0.85);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 10px #4d80ff55;
+  pointer-events: none;
+}
+
+.action-btns {
+  pointer-events: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 0.5rem;
+  width: 130px;
+  height: 130px;
+}
+
+.touch-btn {
+  border: none;
+  border-radius: 50%;
+  font-weight: 800;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  transition: transform 0.08s, filter 0.08s;
+  outline: none;
+}
+.touch-btn:active { transform: scale(0.91); filter: brightness(1.3); }
+
+.touch-special {
+  background: rgba(34,85,255,0.28);
+  border: 2px solid var(--blue-bright);
+  color: var(--blue-light);
+  grid-column: 1;
+  grid-row: 1;
+}
+.touch-ultimate {
+  background: rgba(255,102,0,0.28);
+  border: 2px solid #ff6600;
+  color: #ffaa44;
+  grid-column: 2;
+  grid-row: 1;
+}
+.touch-kick {
+  background: rgba(255,255,255,0.12);
+  border: 2px solid rgba(255,255,255,0.45);
+  color: #fff;
+  font-size: 0.72rem;
+  grid-column: 1 / span 2;
+  grid-row: 2;
+  border-radius: 28px;
+}
+.touch-kick.pressing {
+  background: rgba(255,255,255,0.28);
+}
+
+.touch-pause-btn {
+  display: none;
+  position: fixed;
+  top: calc(58px + env(safe-area-inset-top));
+  right: 0.65rem;
+  z-index: 101;
+  background: rgba(3,5,15,0.72);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-size: 1.15rem;
+  padding: 0.3rem 0.55rem;
+  cursor: pointer;
+  touch-action: manipulation;
+  line-height: 1;
+}
+
+/* ── RESPONSIVE ─────────────────────────────────────────── */
 @media (max-width: 600px) {
   .menu-title { font-size: 2.2rem; }
+  .menu-subtitle { font-size: 0.9rem; letter-spacing: 0.25em; }
   .detail-panel { display: none; }
-  .team-block { min-width: 120px; padding: 0 0.75rem; }
-  .abilities-hud { gap: 0.75rem; }
-  .ability-hud-slot { min-width: 120px; }
+  .team-block { min-width: 80px; padding: 0 0.5rem; }
+  .team-label { font-size: 0.65rem; }
+  .team-score { font-size: 1.6rem; }
+  .timer-display { font-size: 1.1rem; }
+  .abilities-hud { gap: 0.5rem; padding: 0.4rem 0.75rem; }
+  .ability-hud-slot { min-width: 100px; }
+  .ability-hud-name { font-size: 0.68rem; }
+  .player-hud-number { font-size: 1.4rem; }
+  .player-hud-name { font-size: 0.7rem; }
+  .characters-grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+  .select-header { padding: 0.75rem 1rem; }
+  .select-header h2 { font-size: 0.85rem; }
+}
+
+@media (max-width: 380px) {
+  .characters-grid { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; padding: 0.75rem; }
+  .char-card { padding: 0.6rem 0.4rem; }
+  .char-name { font-size: 0.72rem; }
+}
+
+/* Coarse-pointer = touch device */
+@media (pointer: coarse) {
+  .touch-hide-key { display: none; }
+  .touch-controls { display: flex; }
+  .touch-pause-btn { display: block; }
+  .controls-hint { display: none; }
+  .score-bar { height: calc(50px + env(safe-area-inset-top)); padding-top: env(safe-area-inset-top); }
+  .abilities-hud { padding-bottom: calc(0.5rem + env(safe-area-inset-bottom)); }
+  .btn { min-height: 48px; }
+  .char-card { min-height: 130px; }
+}
+
+/* Landscape phone */
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
+  .touch-controls { height: 130px; padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+  .joystick-zone { width: 100px; height: 100px; }
+  .joystick-base { width: 88px; height: 88px; }
+  .joystick-knob { width: 38px; height: 38px; }
+  .action-btns { width: 110px; height: 110px; }
+  .score-bar { height: 44px; }
+  .timer-display { font-size: 1rem; }
+  .team-score { font-size: 1.3rem; }
+  .abilities-hud { padding: 0.3rem 0.75rem; }
+  .ability-bar-track { height: 6px; }
+  .characters-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
+  .detail-panel { display: none; }
+  .menu-title { font-size: 2rem; }
 }

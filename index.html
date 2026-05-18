@@ -80,7 +80,7 @@
       <div class="ability-hud-slot">
         <div class="ability-hud-header">
           <div class="ability-hud-label">SPECIAL</div>
-          <div class="ability-key">Q</div>
+          <div class="ability-key touch-hide-key">Q</div>
         </div>
         <div class="ability-bar-track">
           <div class="ability-bar-fill special-fill" id="special-bar"></div>
@@ -98,7 +98,7 @@
       <div class="ability-hud-slot" style="align-items:flex-end;">
         <div class="ability-hud-header">
           <div class="ability-hud-label">ULTIMATE</div>
-          <div class="ability-key">E</div>
+          <div class="ability-key touch-hide-key">E</div>
         </div>
         <div class="ability-bar-track">
           <div class="ability-bar-fill ultimate-fill" id="ultimate-bar"></div>
@@ -111,6 +111,21 @@
     <div class="controls-hint">
       WASD: Move &nbsp;|&nbsp; SPACE: Kick &nbsp;|&nbsp; Q: Special &nbsp;|&nbsp; E: Ultimate &nbsp;|&nbsp; ESC: Pause
     </div>
+
+    <!-- Touch controls (mobile/coarse pointer) -->
+    <div class="touch-controls" id="touch-controls">
+      <div class="joystick-zone" id="joystick-zone">
+        <div class="joystick-base" id="joystick-base">
+          <div class="joystick-knob" id="joystick-knob"></div>
+        </div>
+      </div>
+      <div class="action-btns" id="action-btns">
+        <button class="touch-btn touch-special" id="touch-btn-special">S</button>
+        <button class="touch-btn touch-ultimate" id="touch-btn-ultimate">U</button>
+        <button class="touch-btn touch-kick" id="touch-btn-kick">KICK</button>
+      </div>
+    </div>
+    <button class="touch-pause-btn" id="touch-pause-btn">⏸</button>
   </div>
 
   <!-- ═══════════════════════════════════════════════════════ -->

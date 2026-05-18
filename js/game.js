@@ -60,6 +60,13 @@ let canvas, ctx, els;
 // Input
 const keys = {};
 
+const touchState = {
+  joystick: { active: false, touchId: null, dx: 0, dy: 0 },
+  kick: false,
+  specialFired: false,
+  ultimateFired: false,
+};
+
 // ── INIT ──────────────────────────────────────────────────────
 window.addEventListener('load', () => {
   canvas = document.getElementById('game-canvas');
@@ -106,9 +113,11 @@ window.addEventListener('load', () => {
   };
 
   setupEvents();
+  setupTouchControls();
   buildCharGrid();
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
+  window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 100));
 
   showScreen('menu');
 });
@@ -155,6 +164,101 @@ function setupEvents() {
     }
   });
   window.addEventListener('keyup', e => { keys[e.code] = false; });
+}
+
+// ── TOUCH CONTROLS ────────────────────────────────────────────
+function setupTouchControls() {
+  const zone       = document.getElementById('joystick-zone');
+  const knob       = document.getElementById('joystick-knob');
+  const btnKick    = document.getElementById('touch-btn-kick');
+  const btnSpecial = document.getElementById('touch-btn-special');
+  const btnUltimate= document.getElementById('touch-btn-ultimate');
+  const btnPause   = document.getElementById('touch-pause-btn');
+
+  if (!zone) return;
+
+  // Joystick – touchstart anywhere in the zone
+  zone.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    touchState.joystick.active  = true;
+    touchState.joystick.touchId = t.identifier;
+    moveKnob(t.clientX, t.clientY, knob);
+  }, { passive: false });
+
+  zone.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier === touchState.joystick.touchId) moveKnob(t.clientX, t.clientY, knob);
+    }
+  }, { passive: false });
+
+  const resetJoystick = e => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === touchState.joystick.touchId) {
+        touchState.joystick.active  = false;
+        touchState.joystick.touchId = null;
+        touchState.joystick.dx      = 0;
+        touchState.joystick.dy      = 0;
+        knob.style.transform = 'translate(-50%, -50%)';
+      }
+    }
+  };
+  zone.addEventListener('touchend',    resetJoystick);
+  zone.addEventListener('touchcancel', resetJoystick);
+
+  // Kick – held down
+  btnKick.addEventListener('touchstart', e => {
+    e.preventDefault();
+    touchState.kick = true;
+    btnKick.classList.add('pressing');
+  }, { passive: false });
+  const stopKick = () => { touchState.kick = false; btnKick.classList.remove('pressing'); };
+  btnKick.addEventListener('touchend',    stopKick);
+  btnKick.addEventListener('touchcancel', stopKick);
+
+  // Special – one-shot on press
+  btnSpecial.addEventListener('touchstart', e => {
+    e.preventDefault();
+    touchState.specialFired = true;
+  }, { passive: false });
+
+  // Ultimate – one-shot on press
+  btnUltimate.addEventListener('touchstart', e => {
+    e.preventDefault();
+    touchState.ultimateFired = true;
+  }, { passive: false });
+
+  // Mobile pause button
+  btnPause.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (appState === 'game') pauseGame();
+    else if (appState === 'pause') resumeGame();
+  }, { passive: false });
+}
+
+function moveKnob(clientX, clientY, knob) {
+  const base = document.getElementById('joystick-base');
+  const rect = base.getBoundingClientRect();
+  const cx = rect.left + rect.width  / 2;
+  const cy = rect.top  + rect.height / 2;
+
+  let dx = clientX - cx;
+  let dy = clientY - cy;
+  const dist   = Math.sqrt(dx * dx + dy * dy);
+  const maxDist = rect.width * 0.38;
+
+  if (dist > maxDist) {
+    dx = (dx / dist) * maxDist;
+    dy = (dy / dist) * maxDist;
+  }
+
+  knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+  const norm = dist > 0 ? Math.min(1, dist / maxDist) : 0;
+  const dead = 0.12;
+  touchState.joystick.dx = norm > dead ? dx / maxDist : 0;
+  touchState.joystick.dy = norm > dead ? dy / maxDist : 0;
 }
 
 // ── CHARACTER SELECT GRID ─────────────────────────────────────
@@ -244,12 +348,12 @@ function refreshDetail(c) {
     <div>
       <div class="section-title">Abilities</div>
       <div class="ability-card" style="margin-bottom:0.6rem">
-        <div class="ability-type special">Special · [Q] · charges over time</div>
+        <div class="ability-type special">Special · [Q/S btn] · charges over time</div>
         <div class="ability-card-name">${ab.special.name}</div>
         <div class="ability-card-desc">${ab.special.description}</div>
       </div>
       <div class="ability-card">
-        <div class="ability-type ultimate">Ultimate · [E] · charges by ${role.ultimateTrigger}s</div>
+        <div class="ability-type ultimate">Ultimate · [E/U btn] · charges by ${role.ultimateTrigger}s</div>
         <div class="ability-card-name">${ab.ultimate.name}</div>
         <div class="ability-card-desc">${ab.ultimate.description}</div>
       </div>
@@ -511,6 +615,12 @@ function updatePlayerInput(dt) {
   if (keys['KeyA'] || keys['ArrowLeft'])  dx -= 1;
   if (keys['KeyD'] || keys['ArrowRight']) dx += 1;
 
+  // Touch joystick
+  if (touchState.joystick.active) {
+    dx += touchState.joystick.dx;
+    dy += touchState.joystick.dy;
+  }
+
   let spd = p.speed;
   if (p.abilities?.special.active && p.abilities.special.effect === 'atk_sprint') spd *= 2;
   if (p.speedBoostTimer > 0) spd *= 1.6;
@@ -521,8 +631,8 @@ function updatePlayerInput(dt) {
     p.y += (dy / len) * spd * dt;
   }
 
-  // Kick (SPACE)
-  if ((keys['Space'] || keys['KeyK']) && p.kickCooldown <= 0) {
+  // Kick (SPACE or touch)
+  if ((keys['Space'] || keys['KeyK'] || touchState.kick) && p.kickCooldown <= 0) {
     const ball = G.ball;
     const dist = Math.hypot(ball.x - p.x, ball.y - p.y);
     if (dist < PHYS.kickRange + PHYS.ballRadius + PHYS.playerRadius) {
@@ -532,16 +642,20 @@ function updatePlayerInput(dt) {
   }
   if (p.kickCooldown > 0) p.kickCooldown -= dt;
 
-  // Special ability [Q]
-  if (keys['KeyQ'] && !keys['_q_held']) {
+  // Special ability [Q] or touch
+  const wantsSpecial = keys['KeyQ'] || touchState.specialFired;
+  if (wantsSpecial && !keys['_q_held']) {
     keys['_q_held'] = true;
+    touchState.specialFired = false;
     activateSpecial(p);
   }
   if (!keys['KeyQ']) keys['_q_held'] = false;
 
-  // Ultimate ability [E]
-  if (keys['KeyE'] && !keys['_e_held']) {
+  // Ultimate ability [E] or touch
+  const wantsUltimate = keys['KeyE'] || touchState.ultimateFired;
+  if (wantsUltimate && !keys['_e_held']) {
     keys['_e_held'] = true;
+    touchState.ultimateFired = false;
     activateUltimate(p);
   }
   if (!keys['KeyE']) keys['_e_held'] = false;
@@ -1149,7 +1263,10 @@ function render() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // Compute scale + offset to fit field in canvas
-  const hudTop = 54, hudBot = 68;
+  const scoreBarEl = document.querySelector('.score-bar');
+  const abHudEl    = document.querySelector('.abilities-hud');
+  const hudTop = scoreBarEl ? scoreBarEl.offsetHeight : 54;
+  const hudBot = abHudEl   ? abHudEl.offsetHeight    : 68;
   const availW = canvas.width;
   const availH = canvas.height - hudTop - hudBot;
 
