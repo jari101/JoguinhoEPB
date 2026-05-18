@@ -19,16 +19,16 @@ const PHYS = {
   playerRadius: 18,
   ballRadius: 10,
   friction: 0.982,
-  maxBallSpeed: 900,
-  playerSpeed: 175,
-  kickForce: 600,
+  maxBallSpeed: 650,
+  playerSpeed: 130,
+  kickForce: 450,
   kickRange: 40,
   kickCooldown: 0.45,
   saveRange: 54        // base GK range multiplier base
 };
 
 const MATCH = {
-  halfDuration: 180,   // seconds per half (3 min each)
+  halfDuration: 900,   // seconds per half (15 min each = 30 min total)
   aiTickRate: 0.06,    // AI recalculates every N seconds
   goalResetDelay: 2.2  // seconds before kick-off after goal
 };
