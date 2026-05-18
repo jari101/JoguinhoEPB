@@ -921,29 +921,32 @@ function updatePhysics(dt) {
     }
   });
 
-  // Player-player collisions (soft push)
-  for (let i = 0; i < G.allPlayers.length; i++) {
-    for (let j = i + 1; j < G.allPlayers.length; j++) {
-      const a = G.allPlayers[i];
-      const b = G.allPlayers[j];
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const minD = PHYS.playerRadius * 2;
-      if (dist < minD && dist > 0) {
-        const push = (minD - dist) / 2;
-        const nx = dx / dist;
-        const ny = dy / dist;
-        // Don't push the human player when iron wall active
-        if (!(a.ironWallTimer > 0)) { a.x -= nx * push; a.y -= ny * push; }
-        if (!(b.ironWallTimer > 0)) { b.x += nx * push; b.y += ny * push; }
+  // Player-player collisions — run multiple iterations to fully separate clusters
+  for (let iter = 0; iter < 4; iter++) {
+    for (let i = 0; i < G.allPlayers.length; i++) {
+      for (let j = i + 1; j < G.allPlayers.length; j++) {
+        const a = G.allPlayers[i];
+        const b = G.allPlayers[j];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const minD = PHYS.playerRadius * 2;
+        if (dist < minD && dist > 0) {
+          const push = (minD - dist) / 2;
+          const nx = dx / dist;
+          const ny = dy / dist;
+          if (!(a.ironWallTimer > 0)) { a.x -= nx * push; a.y -= ny * push; }
+          if (!(b.ironWallTimer > 0)) { b.x += nx * push; b.y += ny * push; }
 
-        // Iron wall: nearby enemies lose the ball
-        if (a.ironWallTimer > 0 && b.team !== a.team) {
-          if (G.possession === b) { G.possession = null; ball.vx += nx * 200; ball.vy += ny * 200; }
-        }
-        if (b.ironWallTimer > 0 && a.team !== b.team) {
-          if (G.possession === a) { G.possession = null; ball.vx -= nx * 200; ball.vy -= ny * 200; }
+          // Only check iron wall effects on first iteration to avoid duplicate triggers
+          if (iter === 0) {
+            if (a.ironWallTimer > 0 && b.team !== a.team) {
+              if (G.possession === b) { G.possession = null; ball.vx += nx * 200; ball.vy += ny * 200; }
+            }
+            if (b.ironWallTimer > 0 && a.team !== b.team) {
+              if (G.possession === a) { G.possession = null; ball.vx -= nx * 200; ball.vy -= ny * 200; }
+            }
+          }
         }
       }
     }
