@@ -689,8 +689,8 @@ function updatePlayerInput(dt) {
   // Rotate camera-relative input into game-world space using player facing angle.
   // Forward game direction: (sin θ, cos θ);  Right game direction: (cos θ, -sin θ)
   const θ = typeof _playerFacingAngle !== 'undefined' ? _playerFacingAngle : 0;
-  let dx = fwd * Math.sin(θ) + rgt * Math.cos(θ);
-  let dy = fwd * Math.cos(θ) - rgt * Math.sin(θ);
+  let dx = fwd * Math.sin(θ) - rgt * Math.cos(θ);
+  let dy = fwd * Math.cos(θ) + rgt * Math.sin(θ);
 
   let spd = p.speed;
   if (p.abilities?.special.active && p.abilities.special.effect === 'atk_sprint') spd *= 2;
