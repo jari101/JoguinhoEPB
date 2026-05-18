@@ -702,6 +702,57 @@ function updatePlayerInput(dt) {
     p.y += (dy / len) * spd * dt;
   }
 
+  // ── Ball possession / dribbling ───────────────────────────────────────
+  // Drop dribble if an external event (AI tackle, collision steal) changed possession
+  if (p.dribbling && G.possession !== p) p.dribbling = false;
+
+  // Auto-pick-up: gain possession when ball enters range
+  //   • always pick up on near-contact (ball almost touching the player)
+  //   • otherwise only when ball is slow or rolling toward the player
+  //     (prevents re-grabbing a ball the player just kicked away)
+  if (!p.dribbling && p.kickCooldown <= 0) {
+    const _pb = G.ball;
+    const _pd = Math.hypot(_pb.x - p.x, _pb.y - p.y);
+    const _range = PHYS.kickRange * G.mapScale + PHYS.ballRadius + PHYS.playerRadius;
+    if (_pd < _range) {
+      const _bSpd  = Math.hypot(_pb.vx, _pb.vy);
+      const _dot   = _pb.vx * (p.x - _pb.x) + _pb.vy * (p.y - _pb.y);
+      const _touch = _pd < (PHYS.playerRadius + PHYS.ballRadius + 5);
+      if (_touch || _bSpd < 5 * G.mapScale || _dot > 0) {
+        p.dribbling = true;
+        G.possession = p;
+        // Initialise dribble direction: movement direction, else toward ball
+        if (dx !== 0 || dy !== 0) {
+          const _ml = Math.sqrt(dx * dx + dy * dy);
+          p._dribbleDx = dx / _ml;
+          p._dribbleDy = dy / _ml;
+        } else {
+          const _bl = _pd || 1;
+          p._dribbleDx = (_pb.x - p.x) / _bl;
+          p._dribbleDy = (_pb.y - p.y) / _bl;
+        }
+      }
+    }
+  }
+
+  // Dribble: lock ball to an offset in front of the player
+  if (p.dribbling) {
+    const _pb  = G.ball;
+    const _off = PHYS.playerRadius + PHYS.ballRadius + 2; // just outside collision threshold
+    if (dx !== 0 || dy !== 0) {
+      const _ml = Math.sqrt(dx * dx + dy * dy);
+      p._dribbleDx = dx / _ml;
+      p._dribbleDy = dy / _ml;
+    }
+    _pb.x = p.x + (p._dribbleDx ?? 1) * _off;
+    _pb.y = p.y + (p._dribbleDy ?? 0) * _off;
+    // Clamp so ball stays inside the field even near walls
+    _pb.x = Math.max(PHYS.ballRadius, Math.min(G.fieldW - PHYS.ballRadius, _pb.x));
+    _pb.y = Math.max(PHYS.ballRadius, Math.min(G.fieldH - PHYS.ballRadius, _pb.y));
+    _pb.vx = 0;
+    _pb.vy = 0;
+  }
+
   // Kick (SPACE or touch)
   if ((keys['Space'] || keys['KeyK'] || touchState.kick) && p.kickCooldown <= 0) {
     const ball = G.ball;
@@ -748,6 +799,7 @@ function updatePlayerInput(dt) {
 }
 
 function kick(player, ball, inputDx, inputDy) {
+  player.dribbling = false;
   let tx = ball.x, ty = ball.y;
 
   // Direction: if player was moving, kick that way; else kick away from player
@@ -788,6 +840,7 @@ function hasBallInRange(player) {
 
 function pass(player, inputDx, inputDy) {
   if (player.kickCooldown > 0) return;
+  player.dribbling = false;
   if (!hasBallInRange(player)) {
     tackle(player);
     return;
@@ -821,6 +874,7 @@ function pass(player, inputDx, inputDy) {
 
 function powerKick(player, inputDx, inputDy) {
   if (player.kickCooldown > 0) return;
+  player.dribbling = false;
   if (!hasBallInRange(player)) {
     tackle(player);
     return;
