@@ -672,17 +672,25 @@ function updatePlayerInput(dt) {
   const p = G.playerObj;
   if (!p) return;
 
-  let dx = 0, dy = 0;
-  if (keys['KeyW'] || keys['ArrowUp'])    dy -= 1;
-  if (keys['KeyS'] || keys['ArrowDown'])  dy += 1;
-  if (keys['KeyA'] || keys['ArrowLeft'])  dx -= 1;
-  if (keys['KeyD'] || keys['ArrowRight']) dx += 1;
+  // Camera-relative input axes: fwd (+1 = forward/W, -1 = back/S)
+  //                              rgt (+1 = right/D,  -1 = left/A)
+  let fwd = 0, rgt = 0;
+  if (keys['KeyW'] || keys['ArrowUp'])    fwd += 1;
+  if (keys['KeyS'] || keys['ArrowDown'])  fwd -= 1;
+  if (keys['KeyD'] || keys['ArrowRight']) rgt += 1;
+  if (keys['KeyA'] || keys['ArrowLeft'])  rgt -= 1;
 
-  // Touch joystick
+  // Touch joystick: dx = screen-right (→ rgt), dy = screen-down (→ -fwd)
   if (touchState.joystick.active) {
-    dx += touchState.joystick.dx;
-    dy += touchState.joystick.dy;
+    rgt += touchState.joystick.dx;
+    fwd -= touchState.joystick.dy;
   }
+
+  // Rotate camera-relative input into game-world space using player facing angle.
+  // Forward game direction: (sin θ, cos θ);  Right game direction: (cos θ, -sin θ)
+  const θ = typeof _playerFacingAngle !== 'undefined' ? _playerFacingAngle : 0;
+  let dx = fwd * Math.sin(θ) + rgt * Math.cos(θ);
+  let dy = fwd * Math.cos(θ) - rgt * Math.sin(θ);
 
   let spd = p.speed;
   if (p.abilities?.special.active && p.abilities.special.effect === 'atk_sprint') spd *= 2;

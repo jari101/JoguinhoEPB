@@ -10,7 +10,7 @@ let _playerMeshes = new Map(); // player id → { group, lLeg, rLeg }
 let _ready = false;
 let _animClock = 0;
 let _cameraView = 'third'; // 'third' | 'first'
-let _playerFacingAngle = 0;
+let _playerFacingAngle = Math.PI / 2; // default: facing right (+X) toward enemy goal
 
 function wx(gx) { return (gx - FIELD.logicalW / 2) * SCALE3D; }
 function wz(gy) { return (gy - FIELD.logicalH / 2) * SCALE3D; }
@@ -296,6 +296,9 @@ function _buildPlayerMesh3D(p) {
   sd.position.y = 0.002;
   group.add(sd);
 
+  // Face toward enemy goal so the camera starts in a sensible position
+  group.rotation.y = p.team === 0 ? Math.PI / 2 : -Math.PI / 2;
+
   return { group, lLeg, rLeg };
 }
 
@@ -443,7 +446,7 @@ function cleanup3D() {
   _playerMeshes.forEach(({ group }) => { if (_scene) _scene.remove(group); });
   _playerMeshes.clear();
   _cameraView = 'third';
-  _playerFacingAngle = 0;
+  _playerFacingAngle = Math.PI / 2;
   if (_camera) {
     _camera.fov = 65;
     _camera.updateProjectionMatrix();
