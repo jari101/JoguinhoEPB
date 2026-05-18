@@ -352,7 +352,7 @@ function updateScene3D(G, dt) {
       let diff = target - group.rotation.y;
       while (diff >  Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
-      group.rotation.y += diff * 0.25;
+      group.rotation.y += diff * 0.125;
     }
 
     // Walk cycle
@@ -415,7 +415,7 @@ function _updateCamera3D(G, toX, toZ, dt) {
     const height = 2.2;
     const targetX = px - fsin * dist;
     const targetZ = pz - fcos * dist;
-    const alpha = 1 - Math.exp(-7 * dt);
+    const alpha = 1 - Math.exp(-3.5 * dt);
     _camera.position.x += (targetX - _camera.position.x) * alpha;
     _camera.position.y += (height  - _camera.position.y) * alpha;
     _camera.position.z += (targetZ - _camera.position.z) * alpha;
