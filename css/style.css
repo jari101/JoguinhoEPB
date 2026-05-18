@@ -607,15 +607,48 @@ html, body {
   text-transform: uppercase;
 }
 
-.controls-hint {
+.controls-panel {
   position: fixed;
   bottom: 60px;
   right: 1rem;
-  font-size: 0.62rem;
-  color: var(--text-muted);
-  letter-spacing: 0.08em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
   pointer-events: none;
   z-index: 99;
+  background: rgba(5, 10, 30, 0.72);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.65rem;
+}
+.ctrl-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.ctrl-key {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: var(--blue-light);
+  background: var(--blue-dark);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.1rem 0.3rem;
+  min-width: 40px;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+.ctrl-key-q { color: #6ec6ff; }
+.ctrl-key-e { color: #ffaa44; }
+.ctrl-desc {
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.ctrl-ability .ctrl-desc {
+  color: var(--text);
+  font-weight: 600;
 }
 
 /* Goal flash */
