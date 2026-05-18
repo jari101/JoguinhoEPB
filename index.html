@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Camelias FC</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- MAIN MENU                                               -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div id="screen-menu" class="screen">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:0.2rem;">
+      <div class="menu-logo">⚽</div>
+      <div class="menu-stadium-label">Welcome to</div>
+      <h1 class="menu-title">CAMELIAS FC</h1>
+      <div class="menu-subtitle">Football Legends</div>
+      <div class="menu-buttons">
+        <button class="btn btn-primary" id="btn-play">▶ &nbsp; PLAY</button>
+        <button class="btn btn-secondary" id="btn-chars">CHARACTERS</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- CHARACTER SELECT                                        -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div id="screen-select" class="screen" style="justify-content:flex-start;">
+    <div class="select-header">
+      <button class="btn btn-back" id="btn-back">← BACK</button>
+      <h2>SELECT YOUR PLAYER</h2>
+      <button class="btn btn-primary" id="btn-start" disabled>START MATCH ▶</button>
+    </div>
+
+    <div class="select-body">
+      <!-- Character grid -->
+      <div class="characters-grid" id="char-grid">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- Detail panel -->
+      <div class="detail-panel" id="detail-panel">
+        <div class="detail-empty">Select a character<br>to see details</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- GAME SCREEN                                             -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div id="screen-game" class="screen" style="justify-content:flex-start;padding:0;">
+    <!-- TOP HUD -->
+    <div class="game-hud">
+      <div class="score-bar">
+        <div class="team-block">
+          <div class="team-label">CAMELIAS</div>
+          <div class="team-score" id="score-home">0</div>
+        </div>
+        <div class="score-divider">–</div>
+        <div class="timer-block">
+          <div class="timer-label">TIME</div>
+          <div class="timer-display" id="timer-display">03:00</div>
+          <div class="half-label" id="half-label">1ST HALF</div>
+        </div>
+        <div class="score-divider">–</div>
+        <div class="team-block away">
+          <div class="team-label">RIVALS</div>
+          <div class="team-score" id="score-away">0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CANVAS -->
+    <canvas id="game-canvas" style="display:block;width:100%;flex:1;"></canvas>
+
+    <!-- BOTTOM ABILITIES HUD -->
+    <div class="abilities-hud">
+      <div class="ability-hud-slot">
+        <div class="ability-hud-header">
+          <div class="ability-hud-label">SPECIAL</div>
+          <div class="ability-key">Q</div>
+        </div>
+        <div class="ability-bar-track">
+          <div class="ability-bar-fill special-fill" id="special-bar"></div>
+        </div>
+        <div class="ability-hud-name" id="special-name">–</div>
+        <div class="ability-hud-active" id="special-active">ACTIVE!</div>
+      </div>
+
+      <div class="player-hud-info">
+        <div class="player-hud-number" id="p-hud-num">#1</div>
+        <div class="player-hud-name" id="p-hud-name">Player</div>
+        <div class="player-hud-role" id="p-hud-role">GK</div>
+      </div>
+
+      <div class="ability-hud-slot" style="align-items:flex-end;">
+        <div class="ability-hud-header">
+          <div class="ability-hud-label">ULTIMATE</div>
+          <div class="ability-key">E</div>
+        </div>
+        <div class="ability-bar-track">
+          <div class="ability-bar-fill ultimate-fill" id="ultimate-bar"></div>
+        </div>
+        <div class="ability-hud-name" id="ultimate-name">–</div>
+        <div class="ability-hud-active" id="ultimate-active">ACTIVE!</div>
+      </div>
+    </div>
+
+    <div class="controls-hint">
+      WASD: Move &nbsp;|&nbsp; SPACE: Kick &nbsp;|&nbsp; Q: Special &nbsp;|&nbsp; E: Ultimate &nbsp;|&nbsp; ESC: Pause
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- PAUSE SCREEN                                            -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div id="screen-pause" class="screen">
+    <div class="pause-inner">
+      <div class="pause-title">PAUSED</div>
+      <button class="btn btn-primary" id="btn-resume">▶ RESUME</button>
+      <button class="btn btn-secondary" id="btn-quit">QUIT MATCH</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- GAME OVER SCREEN                                        -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div id="screen-gameover" class="screen">
+    <div class="gameover-inner">
+      <div class="gameover-result" id="result-text">MATCH OVER</div>
+      <div class="gameover-score" id="final-score">0 – 0</div>
+      <div class="gameover-labels">
+        <span>CAMELIAS</span>
+        <span>RIVALS</span>
+      </div>
+      <div class="menu-buttons" style="margin-top:1rem;">
+        <button class="btn btn-primary" id="btn-play-again">PLAY AGAIN</button>
+        <button class="btn btn-secondary" id="btn-main-menu">MAIN MENU</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- OVERLAYS                                                -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+
+  <!-- Goal flash -->
+  <div class="goal-flash" id="goal-flash">
+    <div class="goal-flash-text home" id="goal-flash-text">GOAL!</div>
+    <div class="goal-flash-scorer" id="goal-flash-scorer"></div>
+  </div>
+
+  <!-- Kickoff countdown -->
+  <div class="kickoff-overlay" id="kickoff-overlay" style="display:none;">
+    <div class="kickoff-text" id="kickoff-text">KICK-OFF!</div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/characters.js"></script>
+  <script src="js/game.js"></script>
+
+</body>
+</html>
