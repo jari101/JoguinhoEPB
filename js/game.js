@@ -55,7 +55,7 @@ let prevState = null;
 let G = null;
 
 // DOM references (populated in init())
-let canvas, ctx, els;
+let els;
 
 // Input
 const keys = {};
@@ -69,9 +69,6 @@ const touchState = {
 
 // ── INIT ──────────────────────────────────────────────────────
 window.addEventListener('load', () => {
-  canvas = document.getElementById('game-canvas');
-  ctx = canvas.getContext('2d');
-
   els = {
     screens: {
       menu:     document.getElementById('screen-menu'),
@@ -115,17 +112,12 @@ window.addEventListener('load', () => {
   setupEvents();
   setupTouchControls();
   buildCharGrid();
-  resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
-  window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 100));
+  window.addEventListener('resize', () => { resize3D(); });
+  window.addEventListener('orientationchange', () => setTimeout(resize3D, 100));
 
   showScreen('menu');
 });
 
-function resizeCanvas() {
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
 
 // ── SCREEN MANAGEMENT ─────────────────────────────────────────
 function showScreen(name) {
@@ -416,6 +408,7 @@ function startGame(charId) {
   const charData = CHARACTERS.find(c => c.id === charId);
   if (!charData) return;
 
+  cleanup3D();
   G = buildGameState(charData);
 
   // Update HUD labels
@@ -426,8 +419,13 @@ function startGame(charId) {
   els.ultimateName.textContent = charData.abilities.ultimate.name;
 
   showScreen('game');
-  requestAnimationFrame(gameLoop);
-  showKickoff('KICK-OFF!');
+  // Init 3D after the container is visible so dimensions are correct
+  setTimeout(() => {
+    init3D();
+    resize3D();
+    requestAnimationFrame(gameLoop);
+    showKickoff('KICK-OFF!');
+  }, 50);
 }
 
 function pauseGame() {
@@ -566,7 +564,8 @@ function gameLoop(ts) {
   G.lastTimestamp = ts;
 
   update(dt);
-  render();
+  updateScene3D(G, dt);
+  render3D();
 
   requestAnimationFrame(gameLoop);
 }
@@ -1255,301 +1254,3 @@ function showKickoff(text) {
   setTimeout(() => { el.style.display = 'none'; }, 1800);
 }
 
-// ── RENDER ────────────────────────────────────────────────────
-function render() {
-  if (!G) return;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#010a02';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // Compute scale + offset to fit field in canvas
-  const scoreBarEl = document.querySelector('.score-bar');
-  const abHudEl    = document.querySelector('.abilities-hud');
-  const hudTop = scoreBarEl ? scoreBarEl.offsetHeight : 54;
-  const hudBot = abHudEl   ? abHudEl.offsetHeight    : 68;
-  const availW = canvas.width;
-  const availH = canvas.height - hudTop - hudBot;
-
-  const scaleX = availW  / FIELD.logicalW;
-  const scaleY = availH  / FIELD.logicalH;
-  const scale  = Math.min(scaleX, scaleY);
-
-  const offX = (availW  - FIELD.logicalW * scale) / 2;
-  const offY = hudTop + (availH - FIELD.logicalH * scale) / 2;
-
-  function tx(x) { return offX + x * scale; }
-  function ty(y) { return offY + y * scale; }
-  function ts(v) { return v * scale; }
-
-  drawField(tx, ty, ts);
-  drawPlayers(tx, ty, ts);
-  drawBall(tx, ty, ts);
-}
-
-// ── DRAW FIELD ────────────────────────────────────────────────
-function drawField(tx, ty, ts) {
-  const fw = FIELD.logicalW;
-  const fh = FIELD.logicalH;
-  const cx = fw / 2;
-  const cy = fh / 2;
-  const gw = FIELD.goalW;
-  const gd = FIELD.goalDepth;
-  const ph = FIELD.penaltyH;
-  const pw = FIELD.penaltyW;
-  const lw = Math.max(1, ts(FIELD.lineW));
-
-  // Stripes
-  const stripeW = ts(70);
-  const numStripes = Math.ceil(ts(fw) / stripeW);
-  for (let i = 0; i < numStripes; i++) {
-    ctx.fillStyle = i % 2 === 0 ? '#1a5c2a' : '#1e6830';
-    ctx.fillRect(tx(0) + i * stripeW, ty(0), stripeW, ts(fh));
-  }
-
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = lw;
-
-  // Boundary
-  roundRect(ctx, tx(0), ty(0), ts(fw), ts(fh), ts(4));
-  ctx.stroke();
-
-  // Center line
-  ctx.beginPath();
-  ctx.moveTo(tx(cx), ty(0));
-  ctx.lineTo(tx(cx), ty(fh));
-  ctx.stroke();
-
-  // Center circle
-  ctx.beginPath();
-  ctx.arc(tx(cx), ty(cy), ts(FIELD.centerR), 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Center spot
-  ctx.beginPath();
-  ctx.arc(tx(cx), ty(cy), ts(5), 0, Math.PI * 2);
-  ctx.fillStyle = '#fff';
-  ctx.fill();
-
-  // Left penalty area
-  ctx.strokeRect(tx(0), ty(cy - ph/2), ts(pw), ts(ph));
-  // Right penalty area
-  ctx.strokeRect(tx(fw - pw), ty(cy - ph/2), ts(pw), ts(ph));
-
-  // Left 6-yard box
-  ctx.strokeRect(tx(0), ty(cy - gw*0.6), ts(pw*0.35), ts(gw*1.2));
-  // Right 6-yard box
-  ctx.strokeRect(tx(fw - pw*0.35), ty(cy - gw*0.6), ts(pw*0.35), ts(gw*1.2));
-
-  // Penalty spots
-  ctx.beginPath();
-  ctx.arc(tx(pw * 0.7), ty(cy), ts(4), 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(tx(fw - pw * 0.7), ty(cy), ts(4), 0, Math.PI * 2);
-  ctx.fill();
-
-  // Goals
-  // Left goal (home defends)
-  ctx.fillStyle = 'rgba(255,255,255,0.06)';
-  ctx.fillRect(tx(-gd), ty(cy - gw/2), ts(gd), ts(gw));
-  ctx.strokeStyle = '#fff';
-  ctx.strokeRect(tx(-gd), ty(cy - gw/2), ts(gd), ts(gw));
-
-  // Right goal (away defends)
-  ctx.fillStyle = 'rgba(255,255,255,0.06)';
-  ctx.fillRect(tx(fw), ty(cy - gw/2), ts(gd), ts(gw));
-  ctx.strokeRect(tx(fw), ty(cy - gw/2), ts(gd), ts(gw));
-
-  // Stadium name
-  ctx.save();
-  ctx.fillStyle = 'rgba(255,255,255,0.07)';
-  ctx.font = `bold ${ts(52)}px 'Segoe UI', Arial`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('CAMELIAS', tx(cx), ty(cy));
-  ctx.restore();
-
-  // Corner arcs
-  cornerArc(ctx, tx(0), ty(0), ts(FIELD.cornerR), 0, Math.PI/2);
-  cornerArc(ctx, tx(fw), ty(0), ts(FIELD.cornerR), Math.PI/2, Math.PI);
-  cornerArc(ctx, tx(fw), ty(fh), ts(FIELD.cornerR), Math.PI, 3*Math.PI/2);
-  cornerArc(ctx, tx(0), ty(fh), ts(FIELD.cornerR), 3*Math.PI/2, 2*Math.PI);
-}
-
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.arcTo(x + w, y, x + w, y + r, r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
-  ctx.lineTo(x + r, y + h);
-  ctx.arcTo(x, y + h, x, y + h - r, r);
-  ctx.lineTo(x, y + r);
-  ctx.arcTo(x, y, x + r, y, r);
-  ctx.closePath();
-}
-
-function cornerArc(ctx, cx, cy, r, startA, endA) {
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, startA, endA);
-  ctx.stroke();
-}
-
-// ── DRAW PLAYERS ──────────────────────────────────────────────
-function drawPlayers(tx, ty, ts) {
-  G.allPlayers.forEach(p => {
-    const px = tx(p.x);
-    const py = ty(p.y);
-    const pr = ts(PHYS.playerRadius);
-    const isHome = p.team === 0;
-    const baseColor = isHome ? CLR.homeShirt : CLR.awayShirt;
-
-    // Shadow
-    ctx.beginPath();
-    ctx.ellipse(px, py + pr * 0.3, pr * 0.9, pr * 0.35, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.fill();
-
-    // Iron wall effect
-    if (p.ironWallTimer > 0) {
-      ctx.beginPath();
-      ctx.arc(px, py, pr * 1.5, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(68, 170, 255, 0.15)';
-      ctx.fill();
-      ctx.strokeStyle = '#44aaff';
-      ctx.lineWidth = ts(3);
-      ctx.stroke();
-    }
-
-    // Speed boost ring
-    if (p.speedBoostTimer > 0) {
-      ctx.beginPath();
-      ctx.arc(px, py, pr * 1.25, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(255, 200, 0, 0.6)';
-      ctx.lineWidth = ts(2);
-      ctx.stroke();
-    }
-
-    // Body circle
-    ctx.beginPath();
-    ctx.arc(px, py, pr, 0, Math.PI * 2);
-    const grad = ctx.createRadialGradient(px - pr*0.3, py - pr*0.3, pr*0.1, px, py, pr);
-    grad.addColorStop(0, lighten(baseColor, 30));
-    grad.addColorStop(1, baseColor);
-    ctx.fillStyle = p.flash > 0 ? '#ffdd44' : grad;
-    ctx.fill();
-
-    // Player glow if human-controlled
-    if (p.isPlayer) {
-      ctx.beginPath();
-      ctx.arc(px, py, pr + ts(4), 0, Math.PI * 2);
-      ctx.strokeStyle = '#4d80ff';
-      ctx.lineWidth = ts(2.5);
-      ctx.stroke();
-    }
-
-    // Outer ring
-    ctx.beginPath();
-    ctx.arc(px, py, pr, 0, Math.PI * 2);
-    ctx.strokeStyle = p.isPlayer ? '#4d80ff' : 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = ts(1.5);
-    ctx.stroke();
-
-    // Special active halo
-    if (p.abilities?.special.active) {
-      ctx.beginPath();
-      ctx.arc(px, py, pr * 1.7, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(77,128,255,0.5)';
-      ctx.lineWidth = ts(2);
-      ctx.stroke();
-    }
-    if (p.abilities?.ultimate.active) {
-      ctx.beginPath();
-      ctx.arc(px, py, pr * 1.9, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(255,120,0,0.5)';
-      ctx.lineWidth = ts(2);
-      ctx.stroke();
-    }
-
-    // Role label (small)
-    const roleChar = p.role === 'GK' ? '⚡' : (p.role === 'ATK' ? '⚽' : (p.role === 'DEF' ? '🛡' : ''));
-    const name = p.isPlayer ? (p.charData?.name ?? 'You') : p.name;
-    ctx.fillStyle = '#fff';
-    ctx.font = `bold ${ts(9)}px 'Segoe UI', Arial`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(name.substring(0,7), px, py + pr + ts(9));
-
-    // Role badge
-    ctx.font = `bold ${ts(10)}px 'Segoe UI', Arial`;
-    ctx.fillStyle = p.isPlayer ? '#ffd700' : 'rgba(255,255,255,0.9)';
-    ctx.fillText(p.role, px, py);
-  });
-}
-
-// ── DRAW BALL ─────────────────────────────────────────────────
-function drawBall(tx, ty, ts) {
-  const bx = tx(G.ball.x);
-  const by = ty(G.ball.y);
-  const br = ts(PHYS.ballRadius);
-
-  // Shadow
-  ctx.beginPath();
-  ctx.ellipse(bx, by + br * 0.5, br * 0.9, br * 0.4, 0, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(0,0,0,0.4)';
-  ctx.fill();
-
-  // Ball
-  ctx.beginPath();
-  ctx.arc(bx, by, br, 0, Math.PI * 2);
-  const bGrad = ctx.createRadialGradient(bx - br*0.3, by - br*0.3, br*0.05, bx, by, br);
-  bGrad.addColorStop(0, '#ffffff');
-  bGrad.addColorStop(0.6, '#dddddd');
-  bGrad.addColorStop(1, '#888888');
-  ctx.fillStyle = bGrad;
-  ctx.fill();
-
-  // Speed trail
-  const speed = Math.hypot(G.ball.vx, G.ball.vy);
-  if (speed > 200) {
-    const alpha = Math.min(0.6, speed / 900);
-    const dx = -G.ball.vx / speed;
-    const dy = -G.ball.vy / speed;
-    const grd = ctx.createLinearGradient(bx, by, bx + dx * ts(30), by + dy * ts(30));
-    grd.addColorStop(0, `rgba(200,220,255,${alpha})`);
-    grd.addColorStop(1, 'rgba(200,220,255,0)');
-    ctx.beginPath();
-    ctx.moveTo(bx + dy * br, by - dx * br);
-    ctx.lineTo(bx + dx * ts(30), by + dy * ts(30));
-    ctx.lineTo(bx - dy * br, by + dx * br);
-    ctx.closePath();
-    ctx.fillStyle = grd;
-    ctx.fill();
-  }
-
-  // Pentagon pattern
-  ctx.strokeStyle = '#333';
-  ctx.lineWidth = ts(0.8);
-  drawPentagon(bx, by, br * 0.5);
-}
-
-function drawPentagon(cx, cy, r) {
-  ctx.beginPath();
-  for (let i = 0; i < 5; i++) {
-    const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
-    if (i === 0) ctx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
-    else ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
-  }
-  ctx.closePath();
-  ctx.stroke();
-}
-
-// ── COLOUR UTILITY ────────────────────────────────────────────
-function lighten(hex, pct) {
-  const num = parseInt(hex.replace('#',''), 16);
-  const r = Math.min(255, (num >> 16) + pct);
-  const g = Math.min(255, ((num >> 8) & 0xff) + pct);
-  const b = Math.min(255, (num & 0xff) + pct);
-  return `rgb(${r},${g},${b})`;
-}

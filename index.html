@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Camelias FC</title>
   <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
 </head>
 <body>
 
@@ -72,8 +73,8 @@
       </div>
     </div>
 
-    <!-- CANVAS -->
-    <canvas id="game-canvas" style="display:block;width:100%;flex:1;"></canvas>
+    <!-- 3D VIEWPORT -->
+    <div id="game-canvas-container" style="display:block;width:100%;flex:1;overflow:hidden;position:relative;"></div>
 
     <!-- BOTTOM ABILITIES HUD -->
     <div class="abilities-hud">
@@ -174,6 +175,7 @@
 
   <!-- Scripts -->
   <script src="js/characters.js"></script>
+  <script src="js/render3d.js"></script>
   <script src="js/game.js"></script>
 
 </body>
