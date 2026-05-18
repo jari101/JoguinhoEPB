@@ -446,8 +446,10 @@ function resumeGame() {
 
 // ── BUILD INITIAL GAME STATE ──────────────────────────────────
 function buildGameState(charData) {
-  const fw = FIELD.logicalW;
-  const fh = FIELD.logicalH;
+  const numPlayers = 10; // 5v5
+  const mapScale = numPlayers / 2 + 1;
+  const fw = FIELD.logicalW * mapScale;
+  const fh = FIELD.logicalH * mapScale;
   const cx = fw / 2;
   const cy = fh / 2;
 
@@ -486,7 +488,7 @@ function buildGameState(charData) {
       kickCooldown: 0,
       aiTimer: Math.random() * MATCH.aiTickRate,
       aiTarget: { x: p.x, y: p.y },
-      speed: (charData.stats.speed / 100) * PHYS.playerSpeed * (isPlayer ? 1 : 0.88),
+      speed: (charData.stats.speed / 100) * PHYS.playerSpeed * mapScale * (isPlayer ? 1 : 0.88),
       abilities: isPlayer ? abilities : null,
       charData: isPlayer ? charData : null,
       // GK auto-save state
@@ -508,7 +510,7 @@ function buildGameState(charData) {
   homeTeam[pSlot].isPlayer = true;
   homeTeam[pSlot].abilities = abilities;
   homeTeam[pSlot].charData = charData;
-  homeTeam[pSlot].speed = (charData.stats.speed / 100) * PHYS.playerSpeed;
+  homeTeam[pSlot].speed = (charData.stats.speed / 100) * PHYS.playerSpeed * mapScale;
 
   const awayTeam = awayPositions.map((p, i) => ({
     id: i + 10,
@@ -521,7 +523,7 @@ function buildGameState(charData) {
     kickCooldown: 0,
     aiTimer: Math.random() * MATCH.aiTickRate,
     aiTarget: { x: p.x, y: p.y },
-    speed: PHYS.playerSpeed * (0.82 + Math.random() * 0.12),
+    speed: PHYS.playerSpeed * mapScale * (0.82 + Math.random() * 0.12),
     abilities: null,
     charData: null,
     speedBoostTimer: 0,
@@ -546,6 +548,9 @@ function buildGameState(charData) {
     ball: { x: cx, y: cy, vx: 0, vy: 0 },
     homeStart: { x: cx * 0.22, y: cy },
     awayStart: { x: fw - cx * 0.22, y: cy },
+    fieldW: fw,
+    fieldH: fh,
+    mapScale,
     possession: null,    // player with ball
     kickoffTimer: 0,     // freeze timer after goal/half
     goalFlashTimer: 0,
@@ -635,7 +640,7 @@ function updatePlayerInput(dt) {
   if ((keys['Space'] || keys['KeyK'] || touchState.kick) && p.kickCooldown <= 0) {
     const ball = G.ball;
     const dist = Math.hypot(ball.x - p.x, ball.y - p.y);
-    if (dist < PHYS.kickRange + PHYS.ballRadius + PHYS.playerRadius) {
+    if (dist < PHYS.kickRange * G.mapScale + PHYS.ballRadius + PHYS.playerRadius) {
       kick(p, ball, dx, dy);
       p.kickCooldown = PHYS.kickCooldown;
     }
@@ -675,7 +680,7 @@ function kick(player, ball, inputDx, inputDy) {
   const len = Math.sqrt(dx * dx + dy * dy) || 1;
   dx /= len; dy /= len;
 
-  let force = PHYS.kickForce;
+  let force = PHYS.kickForce * G.mapScale;
   // Power shot: double force, sets flag
   if (player.abilities?.ultimate.active && player.abilities.ultimate.effect === 'atk_power_shot') {
     force *= 2.2;
@@ -737,8 +742,8 @@ function updateAI(dt) {
 
 function calcAITarget(p) {
   const ball = G.ball;
-  const fw = FIELD.logicalW;
-  const fh = FIELD.logicalH;
+  const fw = G.fieldW;
+  const fh = G.fieldH;
   const cx = fw / 2;
   const cy = fh / 2;
 
@@ -751,8 +756,8 @@ function calcAITarget(p) {
   switch (p.role) {
     case 'GK': {
       // Stay near own goal, track ball height
-      const goalX = ownGoalX === 0 ? FIELD.goalDepth * 2 : fw - FIELD.goalDepth * 2;
-      const clampedY = Math.max(cy - FIELD.goalW * 0.55, Math.min(cy + FIELD.goalW * 0.55, ball.y));
+      const goalX = ownGoalX === 0 ? FIELD.goalDepth * G.mapScale * 2 : fw - FIELD.goalDepth * G.mapScale * 2;
+      const clampedY = Math.max(cy - FIELD.goalW * G.mapScale * 0.55, Math.min(cy + FIELD.goalW * G.mapScale * 0.55, ball.y));
       p.aiTarget = { x: goalX, y: clampedY };
       // Rush ball if it's very close to goal
       if (Math.abs(ball.x - ownGoalX) < fw * 0.2 && ballDist < fw * 0.25)
@@ -772,7 +777,7 @@ function calcAITarget(p) {
     }
     case 'MID': {
       const midX = p.team === 0 ? cx * 0.9 : fw - cx * 0.9;
-      if (ballDist < 200) {
+      if (ballDist < 200 * G.mapScale) {
         p.aiTarget = { x: ball.x, y: ball.y };
       } else {
         p.aiTarget = { x: midX, y: ball.y * 0.7 + cy * 0.3 };
@@ -781,7 +786,7 @@ function calcAITarget(p) {
     }
     case 'ATK': {
       // Always press toward ball / goal
-      if (ballDist < 300) {
+      if (ballDist < 300 * G.mapScale) {
         p.aiTarget = { x: ball.x, y: ball.y };
       } else {
         const atkX = p.team === 0 ? cx * 1.2 : fw - cx * 1.2;
@@ -808,19 +813,21 @@ function tryAIKick(p) {
   if (p.kickCooldown > 0) return;
   const ball = G.ball;
   const dist = Math.hypot(ball.x - p.x, ball.y - p.y);
-  if (dist > PHYS.kickRange + PHYS.ballRadius + PHYS.playerRadius) return;
+  if (dist > PHYS.kickRange * G.mapScale + PHYS.ballRadius + PHYS.playerRadius) return;
 
-  const fw = FIELD.logicalW;
-  const fh = FIELD.logicalH;
+  const fw = G.fieldW;
+  const fh = G.fieldH;
   const enemyGoalX = p.team === 0 ? fw : 0;
   const enemyGoalY = fh / 2;
 
   // Kick toward enemy goal with slight randomness
-  let dx = enemyGoalX - ball.x + (Math.random() - 0.5) * 80;
-  let dy = enemyGoalY - ball.y + (Math.random() - 0.5) * 80;
+  const jitter = 80 * G.mapScale;
+  let dx = enemyGoalX - ball.x + (Math.random() - 0.5) * jitter;
+  let dy = enemyGoalY - ball.y + (Math.random() - 0.5) * jitter;
   const len = Math.sqrt(dx * dx + dy * dy);
-  ball.vx = (dx / len) * PHYS.kickForce * (0.7 + Math.random() * 0.4);
-  ball.vy = (dy / len) * PHYS.kickForce * (0.7 + Math.random() * 0.4);
+  const scaledForce = PHYS.kickForce * G.mapScale;
+  ball.vx = (dx / len) * scaledForce * (0.7 + Math.random() * 0.4);
+  ball.vy = (dy / len) * scaledForce * (0.7 + Math.random() * 0.4);
 
   G.possession = p;
   p.kickCooldown = PHYS.kickCooldown * (0.8 + Math.random() * 0.4);
@@ -834,8 +841,8 @@ function tryAIKick(p) {
 // ── PHYSICS ───────────────────────────────────────────────────
 function updatePhysics(dt) {
   const ball = G.ball;
-  const fw = FIELD.logicalW;
-  const fh = FIELD.logicalH;
+  const fw = G.fieldW;
+  const fh = G.fieldH;
   const gy  = fh / 2;
 
   // Apply friction
@@ -844,9 +851,10 @@ function updatePhysics(dt) {
 
   // Speed cap
   const spd = Math.hypot(ball.vx, ball.vy);
-  if (spd > PHYS.maxBallSpeed) {
-    ball.vx = (ball.vx / spd) * PHYS.maxBallSpeed;
-    ball.vy = (ball.vy / spd) * PHYS.maxBallSpeed;
+  const maxSpd = PHYS.maxBallSpeed * G.mapScale;
+  if (spd > maxSpd) {
+    ball.vx = (ball.vx / spd) * maxSpd;
+    ball.vy = (ball.vy / spd) * maxSpd;
   }
 
   ball.x += ball.vx * dt;
@@ -864,8 +872,8 @@ function updatePhysics(dt) {
 
   // Goal areas: allow ball through the goal mouth (handled in checkGoals)
   // Left/right walls outside goal
-  const goalTop    = gy - FIELD.goalW / 2;
-  const goalBottom = gy + FIELD.goalW / 2;
+  const goalTop    = gy - FIELD.goalW * G.mapScale / 2;
+  const goalBottom = gy + FIELD.goalW * G.mapScale / 2;
   if (ball.x - PHYS.ballRadius < 0 && (ball.y < goalTop || ball.y > goalBottom)) {
     ball.x = PHYS.ballRadius;
     ball.vx = Math.abs(ball.vx) * 0.7;
@@ -966,29 +974,29 @@ function updatePhysics(dt) {
 
 function clampToField(p) {
   const margin = PHYS.playerRadius;
-  p.x = Math.max(margin, Math.min(FIELD.logicalW - margin, p.x));
-  p.y = Math.max(margin, Math.min(FIELD.logicalH - margin, p.y));
+  p.x = Math.max(margin, Math.min(G.fieldW - margin, p.x));
+  p.y = Math.max(margin, Math.min(G.fieldH - margin, p.y));
 }
 
 // ── CHECK GOALS ───────────────────────────────────────────────
 function checkGoals() {
   const ball = G.ball;
-  const fw = FIELD.logicalW;
-  const fh = FIELD.logicalH;
+  const fw = G.fieldW;
+  const fh = G.fieldH;
   const gy = fh / 2;
-  const goalHalf = FIELD.goalW / 2;
+  const goalHalf = FIELD.goalW * G.mapScale / 2;
 
   // GK autosave (ultimate effect)
   const gk = G.allPlayers.find(p => p.isPlayer && p.charData?.role === 'GK');
   if (gk && gk.abilities?.ultimate.active) {
     const d = Math.hypot(ball.x - gk.x, ball.y - gk.y);
-    if (d < PHYS.saveRange * 2) {
+    if (d < PHYS.saveRange * G.mapScale * 2) {
       // Deflect ball
       const nx = (ball.x - gk.x) || 1;
       const ny = (ball.y - gk.y) || 0;
       const len = Math.sqrt(nx*nx + ny*ny);
-      ball.vx = (nx/len) * PHYS.kickForce * 0.8;
-      ball.vy = (ny/len) * PHYS.kickForce * 0.8;
+      ball.vx = (nx/len) * PHYS.kickForce * G.mapScale * 0.8;
+      ball.vy = (ny/len) * PHYS.kickForce * G.mapScale * 0.8;
       gk.abilities.ultimate.autosavesLeft--;
       if (gk.abilities.ultimate.autosavesLeft <= 0) {
         gk.abilities.ultimate.active = false;
@@ -998,18 +1006,18 @@ function checkGoals() {
   }
 
   // Left goal (team 1 scores)
-  if (ball.x - PHYS.ballRadius < -FIELD.goalDepth && ball.y > gy - goalHalf && ball.y < gy + goalHalf) {
+  if (ball.x - PHYS.ballRadius < -FIELD.goalDepth * G.mapScale && ball.y > gy - goalHalf && ball.y < gy + goalHalf) {
     // Check power shot bypass
     const isPowerShot = G.possession?.abilities?.ultimate?.powerShot;
     // GK save check (non-player GK)
     const homeGK = G.homeTeam[0];
-    const saveR = PHYS.saveRange * (homeGK.abilities?.special.active && homeGK.abilities.special.effect === 'gk_save_radius' ? 3 : 1);
+    const saveR = PHYS.saveRange * G.mapScale * (homeGK.abilities?.special.active && homeGK.abilities.special.effect === 'gk_save_radius' ? 3 : 1);
     const distGK = Math.hypot(ball.x - homeGK.x, ball.y - homeGK.y);
 
     if (!isPowerShot && distGK < saveR && homeGK.role === 'GK') {
       // AI GK saved
       ball.vx = Math.abs(ball.vx) * 0.9;
-      ball.x = FIELD.goalDepth;
+      ball.x = FIELD.goalDepth * G.mapScale;
       // GK ultimate charge for player GK
       if (gk) {
         gk.abilities.ultimate.charge = Math.min(100, gk.abilities.ultimate.charge + (gk.abilities.ultimate.chargePerTrigger ?? 33));
@@ -1022,7 +1030,7 @@ function checkGoals() {
   }
 
   // Right goal (team 0 scores)
-  if (ball.x + PHYS.ballRadius > fw + FIELD.goalDepth && ball.y > gy - goalHalf && ball.y < gy + goalHalf) {
+  if (ball.x + PHYS.ballRadius > fw + FIELD.goalDepth * G.mapScale && ball.y > gy - goalHalf && ball.y < gy + goalHalf) {
     const isPowerShot = G.possession?.abilities?.ultimate?.powerShot;
     scoreGoal(0);
     if (G.possession?.abilities?.ultimate) G.possession.abilities.ultimate.powerShot = false;
@@ -1054,8 +1062,8 @@ function scoreGoal(team) {
 }
 
 function resetPositions() {
-  const fw = FIELD.logicalW;
-  const fh = FIELD.logicalH;
+  const fw = G.fieldW;
+  const fh = G.fieldH;
   const cx = fw / 2;
   const cy = fh / 2;
 
@@ -1148,8 +1156,8 @@ function activateSpecial(p) {
       const ball = G.ball;
       const dx = ball.x - p.x, dy = ball.y - p.y;
       const len = Math.sqrt(dx*dx + dy*dy) || 1;
-      p.x += (dx/len) * 80;
-      p.y += (dy/len) * 80;
+      p.x += (dx/len) * 80 * G.mapScale;
+      p.y += (dy/len) * 80 * G.mapScale;
       clampToField(p);
       break;
     case 'mid_vision_pass':
@@ -1270,12 +1278,12 @@ function render() {
   const availW = canvas.width;
   const availH = canvas.height - hudTop - hudBot;
 
-  const scaleX = availW  / FIELD.logicalW;
-  const scaleY = availH  / FIELD.logicalH;
+  const scaleX = availW  / G.fieldW;
+  const scaleY = availH  / G.fieldH;
   const scale  = Math.min(scaleX, scaleY);
 
-  const offX = (availW  - FIELD.logicalW * scale) / 2;
-  const offY = hudTop + (availH - FIELD.logicalH * scale) / 2;
+  const offX = (availW  - G.fieldW * scale) / 2;
+  const offY = hudTop + (availH - G.fieldH * scale) / 2;
 
   function tx(x) { return offX + x * scale; }
   function ty(y) { return offY + y * scale; }
@@ -1288,14 +1296,15 @@ function render() {
 
 // ── DRAW FIELD ────────────────────────────────────────────────
 function drawField(tx, ty, ts) {
-  const fw = FIELD.logicalW;
-  const fh = FIELD.logicalH;
+  const fw = G.fieldW;
+  const fh = G.fieldH;
   const cx = fw / 2;
   const cy = fh / 2;
-  const gw = FIELD.goalW;
-  const gd = FIELD.goalDepth;
-  const ph = FIELD.penaltyH;
-  const pw = FIELD.penaltyW;
+  const ms = G.mapScale;
+  const gw = FIELD.goalW * ms;
+  const gd = FIELD.goalDepth * ms;
+  const ph = FIELD.penaltyH * ms;
+  const pw = FIELD.penaltyW * ms;
   const lw = Math.max(1, ts(FIELD.lineW));
 
   // Stripes
@@ -1321,7 +1330,7 @@ function drawField(tx, ty, ts) {
 
   // Center circle
   ctx.beginPath();
-  ctx.arc(tx(cx), ty(cy), ts(FIELD.centerR), 0, Math.PI * 2);
+  ctx.arc(tx(cx), ty(cy), ts(FIELD.centerR * ms), 0, Math.PI * 2);
   ctx.stroke();
 
   // Center spot
@@ -1370,10 +1379,10 @@ function drawField(tx, ty, ts) {
   ctx.restore();
 
   // Corner arcs
-  cornerArc(ctx, tx(0), ty(0), ts(FIELD.cornerR), 0, Math.PI/2);
-  cornerArc(ctx, tx(fw), ty(0), ts(FIELD.cornerR), Math.PI/2, Math.PI);
-  cornerArc(ctx, tx(fw), ty(fh), ts(FIELD.cornerR), Math.PI, 3*Math.PI/2);
-  cornerArc(ctx, tx(0), ty(fh), ts(FIELD.cornerR), 3*Math.PI/2, 2*Math.PI);
+  cornerArc(ctx, tx(0), ty(0), ts(FIELD.cornerR * ms), 0, Math.PI/2);
+  cornerArc(ctx, tx(fw), ty(0), ts(FIELD.cornerR * ms), Math.PI/2, Math.PI);
+  cornerArc(ctx, tx(fw), ty(fh), ts(FIELD.cornerR * ms), Math.PI, 3*Math.PI/2);
+  cornerArc(ctx, tx(0), ty(fh), ts(FIELD.cornerR * ms), 3*Math.PI/2, 2*Math.PI);
 }
 
 function roundRect(ctx, x, y, w, h, r) {
