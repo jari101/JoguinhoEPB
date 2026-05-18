@@ -24,7 +24,9 @@ const PHYS = {
   kickForce: 90,
   kickRange: 40,
   kickCooldown: 0.45,
-  saveRange: 54        // base GK range multiplier base
+  saveRange: 54,       // base GK range multiplier base
+  tackleRange: 48,
+  tackleCooldown: 1.0
 };
 
 const MATCH = {
@@ -65,6 +67,8 @@ const touchState = {
   kick: false,
   specialFired: false,
   ultimateFired: false,
+  passFired: false,
+  powerKickFired: false,
 };
 
 // ── INIT ──────────────────────────────────────────────────────
@@ -158,16 +162,29 @@ function setupEvents() {
     }
   });
   window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+  // Mouse clicks on game canvas: left = pass/tackle, right = power kick/tackle
+  const gameCanvasContainer = document.getElementById('game-canvas-container');
+  if (gameCanvasContainer) {
+    gameCanvasContainer.addEventListener('contextmenu', e => e.preventDefault());
+    gameCanvasContainer.addEventListener('mousedown', e => {
+      if (appState !== 'game' || !G || G.paused) return;
+      if (e.button === 0) touchState.passFired = true;
+      if (e.button === 2) touchState.powerKickFired = true;
+    });
+  }
 }
 
 // ── TOUCH CONTROLS ────────────────────────────────────────────
 function setupTouchControls() {
-  const zone       = document.getElementById('joystick-zone');
-  const knob       = document.getElementById('joystick-knob');
-  const btnKick    = document.getElementById('touch-btn-kick');
-  const btnSpecial = document.getElementById('touch-btn-special');
-  const btnUltimate= document.getElementById('touch-btn-ultimate');
-  const btnPause   = document.getElementById('touch-pause-btn');
+  const zone          = document.getElementById('joystick-zone');
+  const knob          = document.getElementById('joystick-knob');
+  const btnKick       = document.getElementById('touch-btn-kick');
+  const btnSpecial    = document.getElementById('touch-btn-special');
+  const btnUltimate   = document.getElementById('touch-btn-ultimate');
+  const btnPass       = document.getElementById('touch-btn-pass');
+  const btnPowerKick  = document.getElementById('touch-btn-power-kick');
+  const btnPause      = document.getElementById('touch-pause-btn');
 
   if (!zone) return;
 
@@ -222,6 +239,30 @@ function setupTouchControls() {
     e.preventDefault();
     touchState.ultimateFired = true;
   }, { passive: false });
+
+  // Pass – one-shot on press
+  if (btnPass) {
+    btnPass.addEventListener('touchstart', e => {
+      e.preventDefault();
+      touchState.passFired = true;
+      btnPass.classList.add('pressing');
+    }, { passive: false });
+    const stopPass = () => btnPass.classList.remove('pressing');
+    btnPass.addEventListener('touchend',    stopPass);
+    btnPass.addEventListener('touchcancel', stopPass);
+  }
+
+  // Power kick – one-shot on press
+  if (btnPowerKick) {
+    btnPowerKick.addEventListener('touchstart', e => {
+      e.preventDefault();
+      touchState.powerKickFired = true;
+      btnPowerKick.classList.add('pressing');
+    }, { passive: false });
+    const stopPowerKick = () => btnPowerKick.classList.remove('pressing');
+    btnPowerKick.addEventListener('touchend',    stopPowerKick);
+    btnPowerKick.addEventListener('touchcancel', stopPowerKick);
+  }
 
   // Mobile pause button
   btnPause.addEventListener('touchstart', e => {
@@ -488,6 +529,7 @@ function buildGameState(charData) {
       isPlayer,
       hasBall: false,
       kickCooldown: 0,
+      tackleCooldown: 0,
       aiTimer: Math.random() * MATCH.aiTickRate,
       aiTarget: { x: p.x, y: p.y },
       speed: (charData.stats.speed / 100) * PHYS.playerSpeed * mapScale * (isPlayer ? 1 : 0.88),
@@ -523,6 +565,7 @@ function buildGameState(charData) {
     isPlayer: false,
     hasBall: false,
     kickCooldown: 0,
+    tackleCooldown: 0,
     aiTimer: Math.random() * MATCH.aiTickRate,
     aiTarget: { x: p.x, y: p.y },
     speed: PHYS.playerSpeed * mapScale * (0.82 + Math.random() * 0.12),
@@ -649,6 +692,19 @@ function updatePlayerInput(dt) {
     }
   }
   if (p.kickCooldown > 0) p.kickCooldown -= dt;
+  if (p.tackleCooldown > 0) p.tackleCooldown -= dt;
+
+  // Pass (left click / touch PASS button) – pass to teammate, or tackle if no ball nearby
+  if (touchState.passFired) {
+    touchState.passFired = false;
+    pass(p, dx, dy);
+  }
+
+  // Power kick (right click / touch PWR button) – kick hard, or tackle if no ball nearby
+  if (touchState.powerKickFired) {
+    touchState.powerKickFired = false;
+    powerKick(p, dx, dy);
+  }
 
   // Special ability [Q] or touch
   const wantsSpecial = keys['KeyQ'] || touchState.specialFired;
@@ -702,6 +758,127 @@ function kick(player, ball, inputDx, inputDy) {
   if (player.isPlayer) {
     checkDribblePast(player);
   }
+}
+
+function hasBallInRange(player) {
+  const ball = G.ball;
+  const dist = Math.hypot(ball.x - player.x, ball.y - player.y);
+  return dist < PHYS.kickRange * G.mapScale + PHYS.ballRadius + PHYS.playerRadius;
+}
+
+function pass(player, inputDx, inputDy) {
+  if (player.kickCooldown > 0) return;
+  if (!hasBallInRange(player)) {
+    tackle(player);
+    return;
+  }
+  const teammates = G.allPlayers.filter(p => p.team === player.team && p !== player);
+  if (teammates.length === 0) {
+    kick(player, G.ball, inputDx, inputDy);
+    return;
+  }
+  // Pick nearest teammate ahead toward enemy goal
+  const enemyGoalX = player.team === 0 ? G.fieldW : 0;
+  let best = teammates[0];
+  let bestScore = Infinity;
+  teammates.forEach(t => {
+    const dist = Math.hypot(t.x - player.x, t.y - player.y);
+    const goalDist = Math.abs(t.x - enemyGoalX);
+    const score = goalDist * 0.6 + dist * 0.4;
+    if (score < bestScore) { bestScore = score; best = t; }
+  });
+  const ball = G.ball;
+  const dx = best.x - ball.x;
+  const dy = best.y - ball.y;
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+  ball.vx = (dx / len) * PHYS.kickForce * G.mapScale * 0.9;
+  ball.vy = (dy / len) * PHYS.kickForce * G.mapScale * 0.9;
+  G.possession = player;
+  player.kickCooldown = PHYS.kickCooldown;
+  player.flash = 0.35;
+  if (player.isPlayer) checkDribblePast(player);
+}
+
+function powerKick(player, inputDx, inputDy) {
+  if (player.kickCooldown > 0) return;
+  if (!hasBallInRange(player)) {
+    tackle(player);
+    return;
+  }
+  const ball = G.ball;
+  let dx = inputDx, dy = inputDy;
+  if (dx === 0 && dy === 0) {
+    // Kick toward enemy goal
+    const enemyGoalX = player.team === 0 ? G.fieldW : 0;
+    dx = enemyGoalX - ball.x;
+    dy = G.fieldH / 2 - ball.y;
+  }
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+
+  // Apply power shot bonus if ultimate active
+  let forceMult = 2.2;
+  if (player.abilities?.ultimate.active && player.abilities.ultimate.effect === 'atk_power_shot') {
+    forceMult = 2.8;
+    player.abilities.ultimate.powerShot = true;
+    player.abilities.ultimate.active = false;
+    player.abilities.ultimate.charge = 0;
+  }
+
+  ball.vx = (dx / len) * PHYS.kickForce * G.mapScale * forceMult;
+  ball.vy = (dy / len) * PHYS.kickForce * G.mapScale * forceMult;
+  G.possession = player;
+  player.kickCooldown = PHYS.kickCooldown * 1.5;
+  player.flash = 0.55;
+  if (player.isPlayer) checkDribblePast(player);
+}
+
+function tackle(player) {
+  if (player.tackleCooldown > 0) return;
+
+  const ball = G.ball;
+  const enemies = G.allPlayers.filter(p => p.team !== player.team);
+  if (enemies.length === 0) return;
+
+  // Prefer enemy who has ball possession; otherwise nearest
+  let target = enemies[0];
+  let bestScore = Infinity;
+  enemies.forEach(e => {
+    const dist = Math.hypot(e.x - player.x, e.y - player.y);
+    const score = G.possession === e ? dist * 0.35 : dist;
+    if (score < bestScore) { bestScore = score; target = e; }
+  });
+
+  // Dash toward target
+  const dx = target.x - player.x;
+  const dy = target.y - player.y;
+  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+  const dashDist = 88 * G.mapScale;
+  player.x += (dx / dist) * Math.min(dashDist, dist);
+  player.y += (dy / dist) * Math.min(dashDist, dist);
+  clampToField(player);
+
+  // Check if ball is now in reach
+  const ballDist = Math.hypot(ball.x - player.x, ball.y - player.y);
+  if (ballDist < PHYS.tackleRange * G.mapScale) {
+    // Steal: poke the ball forward in the tackle direction
+    const nx = ball.x - player.x || 1;
+    const ny = ball.y - player.y;
+    const nlen = Math.sqrt(nx * nx + ny * ny) || 1;
+    ball.vx = (nx / nlen) * PHYS.kickForce * G.mapScale * 0.75;
+    ball.vy = (ny / nlen) * PHYS.kickForce * G.mapScale * 0.75;
+    G.possession = player;
+    player.flash = 0.6;
+
+    // Charge DEF ultimate on successful tackle
+    if (player.charData?.role === 'DEF' && player.abilities) {
+      const ab = player.abilities.ultimate;
+      ab.charge = Math.min(ab.maxCharge, ab.charge + (ab.chargePerTrigger ?? 34));
+    }
+  } else {
+    player.flash = 0.15;
+  }
+
+  player.tackleCooldown = PHYS.tackleCooldown;
 }
 
 function checkDribblePast(player) {
