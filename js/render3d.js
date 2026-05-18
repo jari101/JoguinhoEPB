@@ -302,14 +302,19 @@ function updateScene3D(G, dt) {
   if (!_ready || !G) return;
   _animClock += dt;
 
+  const fw3d = FIELD.logicalW * SCALE3D;
+  const fh3d = FIELD.logicalH * SCALE3D;
+  function toX(gx) { return (gx / G.fieldW - 0.5) * fw3d; }
+  function toZ(gy) { return (gy / G.fieldH - 0.5) * fh3d; }
+
   // Ball
   const ball = G.ball;
   const br = PHYS.ballRadius * SCALE3D;
-  _ballGroup.position.set(wx(ball.x), br, wz(ball.y));
+  _ballGroup.position.set(toX(ball.x), br, toZ(ball.y));
   const bspd = Math.hypot(ball.vx, ball.vy);
-  if (bspd > 30) {
-    _ballGroup.rotation.x -= ball.vy * SCALE3D * dt * 3;
-    _ballGroup.rotation.z += ball.vx * SCALE3D * dt * 3;
+  if (bspd > 30 * G.mapScale) {
+    _ballGroup.rotation.x -= ball.vy * SCALE3D / G.mapScale * dt * 3;
+    _ballGroup.rotation.z += ball.vx * SCALE3D / G.mapScale * dt * 3;
   }
 
   // Players
@@ -329,8 +334,8 @@ function updateScene3D(G, dt) {
     const { group, lLeg, rLeg } = _playerMeshes.get(p.id);
     const prevX = group.position.x;
     const prevZ = group.position.z;
-    const newX  = wx(p.x);
-    const newZ  = wz(p.y);
+    const newX  = toX(p.x);
+    const newZ  = toZ(p.y);
     group.position.set(newX, 0, newZ);
 
     // Face movement direction
