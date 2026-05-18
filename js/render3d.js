@@ -206,100 +206,92 @@ function _buildBall3D() {
   sd.position.y = -r + 0.002;
   _ballGroup.add(sd);
 
+  // Position at centre-field immediately so it's visible before the first game tick
+  const br = PHYS.ballRadius * SCALE3D;
+  _ballGroup.position.set(0, br, 0);
   _scene.add(_ballGroup);
 }
 
 // ── PLAYER MESH ───────────────────────────────────────────────
 function _buildPlayerMesh3D(p) {
   const group = new THREE.Group();
-  const isHome  = p.team === 0;
-  const shirtHex = isHome ? 0x1a4fff : 0xcc2200;
-  const shortHex = isHome ? 0x0a2a99 : 0x881500;
+  const isHome   = p.team === 0;
+  const shirtCol = isHome ? 0x1a4fff : 0xcc2200;
+  const shortCol = isHome ? 0x0a2a99 : 0x881500;
+  const shoeCol  = 0x111111;
 
-  let skinHex = 0xd4956a;
-  let hairHex = 0x2a1a0a;
-  if (p.charData?.skinColor) skinHex = parseInt(p.charData.skinColor.replace('#', ''), 16);
-  if (p.charData?.hairColor) hairHex = parseInt(p.charData.hairColor.replace('#', ''), 16);
+  let skinCol = 0xd4956a;
+  let hairCol = 0x2a1a0a;
+  try {
+    if (p.charData && p.charData.skinColor)
+      skinCol = parseInt(p.charData.skinColor.replace('#', ''), 16);
+    if (p.charData && p.charData.hairColor)
+      hairCol = parseInt(p.charData.hairColor.replace('#', ''), 16);
+  } catch(e) { /* use defaults */ }
 
-  const shirtMat = new THREE.MeshPhongMaterial({ color: shirtHex, shininess: 30 });
-  const shortMat = new THREE.MeshPhongMaterial({ color: shortHex });
-  const skinMat  = new THREE.MeshPhongMaterial({ color: skinHex,  shininess: 15 });
-  const hairMat  = new THREE.MeshPhongMaterial({ color: hairHex,  shininess: 25 });
-
-  const add = (geo, mat, x, y, z, rx, ry, rz) => {
-    const m = new THREE.Mesh(geo, mat);
-    m.position.set(x || 0, y || 0, z || 0);
-    if (rx) m.rotation.x = rx;
-    if (ry) m.rotation.y = ry;
-    if (rz) m.rotation.z = rz;
+  function mkMat(col) {
+    return new THREE.MeshPhongMaterial({ color: col, shininess: 20 });
+  }
+  function mk(geo, col, x, y, z) {
+    const m = new THREE.Mesh(geo, mkMat(col));
+    m.position.set(x, y, z);
     m.castShadow = true;
     group.add(m);
     return m;
-  };
+  }
 
-  // Body parts
-  add(new THREE.CylinderGeometry(0.09,  0.08,  0.24, 8), shirtMat,  0,    0.37, 0);
-  add(new THREE.CylinderGeometry(0.086, 0.083, 0.1,  8), shortMat,  0,    0.23, 0);
-  add(new THREE.CylinderGeometry(0.026, 0.022, 0.18, 8), shirtMat, -0.115, 0.38, 0, 0, 0,  0.35);
-  add(new THREE.CylinderGeometry(0.026, 0.022, 0.18, 8), shirtMat,  0.115, 0.38, 0, 0, 0, -0.35);
+  // Torso
+  mk(new THREE.CylinderGeometry(0.10, 0.09, 0.26, 8), shirtCol, 0, 0.38, 0);
 
-  // Legs — store refs for animation
-  const lLeg = add(new THREE.CylinderGeometry(0.036, 0.03, 0.2, 8), skinMat, -0.042, 0.1, 0);
-  const rLeg = add(new THREE.CylinderGeometry(0.036, 0.03, 0.2, 8), skinMat,  0.042, 0.1, 0);
+  // Shorts
+  mk(new THREE.CylinderGeometry(0.092, 0.09, 0.11, 8), shortCol, 0, 0.23, 0);
 
-  // Shoes
-  add(new THREE.BoxGeometry(0.06, 0.035, 0.1), new THREE.MeshPhongMaterial({ color: 0x111111 }), -0.042, 0.015, 0.025);
-  add(new THREE.BoxGeometry(0.06, 0.035, 0.1), new THREE.MeshPhongMaterial({ color: 0x111111 }),  0.042, 0.015, 0.025);
+  // Left arm
+  const lArmMesh = mk(new THREE.CylinderGeometry(0.028, 0.024, 0.18, 8), shirtCol, -0.13, 0.38, 0);
+  lArmMesh.rotation.z =  0.4;
+  // Right arm
+  const rArmMesh = mk(new THREE.CylinderGeometry(0.028, 0.024, 0.18, 8), shirtCol,  0.13, 0.38, 0);
+  rArmMesh.rotation.z = -0.4;
+
+  // Left leg
+  const lLeg = mk(new THREE.CylinderGeometry(0.038, 0.032, 0.22, 8), skinCol, -0.045, 0.10, 0);
+  // Right leg
+  const rLeg = mk(new THREE.CylinderGeometry(0.038, 0.032, 0.22, 8), skinCol,  0.045, 0.10, 0);
+
+  // Shoes (simple spheres — avoids BoxGeometry issues)
+  mk(new THREE.SphereGeometry(0.045, 8, 6), shoeCol, -0.045, 0.012, 0.02);
+  mk(new THREE.SphereGeometry(0.045, 8, 6), shoeCol,  0.045, 0.012, 0.02);
 
   // Head
-  add(new THREE.SphereGeometry(0.1, 14, 12), skinMat, 0, 0.595, 0);
+  mk(new THREE.SphereGeometry(0.11, 12, 10), skinCol, 0, 0.60, 0);
 
-  // Hair cap (upper hemisphere)
-  const hairGeo = new THREE.SphereGeometry(0.103, 14, 12, 0, Math.PI * 2, 0, Math.PI * 0.52);
-  const hairCap = new THREE.Mesh(hairGeo, hairMat);
-  hairCap.position.y = 0.595;
-  group.add(hairCap);
+  // Hair (full sphere slightly larger, same position — hair color on top half illusion)
+  const hairMesh = mk(new THREE.SphereGeometry(0.112, 12, 10), hairCol, 0, 0.62, 0);
+  // Clip bottom half of hair by offsetting downward so only crown shows
+  hairMesh.position.y = 0.655;
 
   // Eyes
-  const eyeGeo = new THREE.SphereGeometry(0.017, 6, 6);
-  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-  const le = new THREE.Mesh(eyeGeo, eyeMat); le.position.set(-0.038, 0.608, 0.089); group.add(le);
-  const re = new THREE.Mesh(eyeGeo, eyeMat); re.position.set( 0.038, 0.608, 0.089); group.add(re);
+  mk(new THREE.SphereGeometry(0.018, 6, 5), 0x111111, -0.042, 0.615, 0.096);
+  mk(new THREE.SphereGeometry(0.018, 6, 5), 0x111111,  0.042, 0.615, 0.096);
 
-  // Jersey number sprite
-  const nc = document.createElement('canvas');
-  nc.width = 64; nc.height = 64;
-  const nctx = nc.getContext('2d');
-  nctx.fillStyle = '#ffffff';
-  nctx.font = 'bold 30px Arial';
-  nctx.textAlign = 'center';
-  nctx.textBaseline = 'middle';
-  nctx.fillText(String(p.id), 32, 32);
-  const numMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.1, 0.1),
-    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(nc), transparent: true, depthWrite: false })
-  );
-  numMesh.position.set(0, 0.375, 0.092);
-  group.add(numMesh);
-
-  // Player indicator ring (blue glow under feet)
+  // Player indicator ring
   if (p.isPlayer) {
     const ring = new THREE.Mesh(
-      new THREE.RingGeometry(0.17, 0.22, 24),
-      new THREE.MeshBasicMaterial({ color: 0x4d80ff, side: THREE.DoubleSide })
+      new THREE.TorusGeometry(0.20, 0.02, 6, 20),
+      new THREE.MeshBasicMaterial({ color: 0x4d80ff })
     );
     ring.rotation.x = -Math.PI / 2;
-    ring.position.y = 0.003;
+    ring.position.y = 0.01;
     group.add(ring);
   }
 
-  // Ground shadow
+  // Ground shadow disc
   const sd = new THREE.Mesh(
-    new THREE.CircleGeometry(0.14, 16),
-    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3 })
+    new THREE.CircleGeometry(0.15, 16),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28 })
   );
   sd.rotation.x = -Math.PI / 2;
-  sd.position.y = 0.001;
+  sd.position.y = 0.002;
   group.add(sd);
 
   return { group, lLeg, rLeg };
@@ -323,10 +315,16 @@ function updateScene3D(G, dt) {
   // Players
   G.allPlayers.forEach(p => {
     if (!_playerMeshes.has(p.id)) {
-      const data = _buildPlayerMesh3D(p);
-      _playerMeshes.set(p.id, data);
-      _scene.add(data.group);
+      try {
+        const data = _buildPlayerMesh3D(p);
+        _playerMeshes.set(p.id, data);
+        _scene.add(data.group);
+      } catch(e) {
+        console.error('Player mesh build failed for id', p.id, e);
+        return;
+      }
     }
+    if (!_playerMeshes.has(p.id)) return;
 
     const { group, lLeg, rLeg } = _playerMeshes.get(p.id);
     const prevX = group.position.x;
