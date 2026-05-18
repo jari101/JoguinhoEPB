@@ -20,7 +20,7 @@ const PHYS = {
   ballRadius: 10,
   friction: 0.982,
   maxBallSpeed: 130,
-  playerSpeed: 39,
+  playerSpeed: 59,
   kickForce: 90,
   kickRange: 40,
   kickCooldown: 0.45,
