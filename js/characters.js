@@ -104,22 +104,22 @@ const CHARACTERS = [
     skinColor: "#f4c88a", hairColor: "#3d2b1f", shirtColor: "#FFD700"
   },
   {
-    id: 2,  name: "Jari",      role: "DEF", unlocked: true,
+    id: 2,  name: "Jari",      role: "GK",  unlocked: true,
     stats: { speed: 78, shooting: 65, defense: 88, passing: 74 },
     skinColor: "#d4956a", hairColor: "#1a1a1a", shirtColor: "#1a4fff"
   },
   {
-    id: 3,  name: "Diego",     role: "DEF", unlocked: true,
+    id: 3,  name: "Diego",     role: "ATK", unlocked: true,
     stats: { speed: 75, shooting: 68, defense: 85, passing: 72 },
     skinColor: "#e8b89a", hairColor: "#5c3d2e", shirtColor: "#1a4fff"
   },
   {
-    id: 4,  name: "Vitor",     role: "DEF", unlocked: true,
+    id: 4,  name: "Vitor",     role: "ATK", unlocked: true,
     stats: { speed: 77, shooting: 64, defense: 87, passing: 70 },
     skinColor: "#c48b6a", hairColor: "#2c1810", shirtColor: "#1a4fff"
   },
   {
-    id: 5,  name: "Vieira",    role: "DEF", unlocked: true,
+    id: 5,  name: "Vieira",    role: "ATK", unlocked: true,
     stats: { speed: 80, shooting: 70, defense: 84, passing: 78 },
     skinColor: "#a06040", hairColor: "#1a1a1a", shirtColor: "#1a4fff"
   },
@@ -134,12 +134,12 @@ const CHARACTERS = [
     skinColor: "#d4956a", hairColor: "#3d2b1f", shirtColor: "#1a4fff"
   },
   {
-    id: 8,  name: "Martim",    role: "MID", unlocked: true,
+    id: 8,  name: "Martim",    role: "DEF", unlocked: true,
     stats: { speed: 83, shooting: 78, defense: 68, passing: 85 },
     skinColor: "#f0d0b0", hairColor: "#6b4c1e", shirtColor: "#1a4fff"
   },
   {
-    id: 9,  name: "Vinícius",  role: "ATK", unlocked: true,
+    id: 9,  name: "Vinícius",  role: "DEF", unlocked: true,
     stats: { speed: 94, shooting: 86, defense: 55, passing: 82 },
     skinColor: "#8b5e3c", hairColor: "#1a1a1a", shirtColor: "#1a4fff"
   },
@@ -154,12 +154,12 @@ const CHARACTERS = [
     skinColor: "#7a4f2d", hairColor: "#1a1a1a", shirtColor: "#1a4fff"
   },
   {
-    id: 12, name: "Breno",     role: "ATK", unlocked: true,
+    id: 12, name: "Breno",     role: "DEF", unlocked: true,
     stats: { speed: 90, shooting: 84, defense: 50, passing: 76 },
     skinColor: "#6b3d1e", hairColor: "#1a1a1a", shirtColor: "#1a4fff"
   },
   {
-    id: 13, name: "Rafael",    role: "ATK", unlocked: true,
+    id: 13, name: "Rafael",    role: "MID", unlocked: true,
     stats: { speed: 85, shooting: 82, defense: 58, passing: 78 },
     skinColor: "#d4956a", hairColor: "#4a3020", shirtColor: "#1a4fff"
   },
@@ -169,33 +169,34 @@ const CHARACTERS = [
     skinColor: "#b87c50", hairColor: "#2c1810", shirtColor: "#1a4fff"
   },
   {
-    id: 15, name: "Gustavo",   role: "ATK", unlocked: true,
+    id: 15, name: "Gustavo",   role: "MID", unlocked: true,
     stats: { speed: 87, shooting: 85, defense: 54, passing: 77 },
     skinColor: "#e0b090", hairColor: "#5c3d2e", shirtColor: "#1a4fff"
   },
   {
-    id: 16, name: "Enzo",      role: "ATK", unlocked: true,
+    id: 16, name: "Enzo",      role: "DEF", unlocked: true,
     stats: { speed: 92, shooting: 90, defense: 48, passing: 80 },
     skinColor: "#f0c8a0", hairColor: "#8b7355", shirtColor: "#1a4fff"
   },
   // ── BLOCKED ───────────────────────────────────────────────
   {
-    id: 17, name: "???",       role: "ATK", unlocked: false,
+    id: 17, name: "Luís",              role: "ATK", unlocked: false,
     stats: { speed: 0, shooting: 0, defense: 0, passing: 0 },
     skinColor: "#555", hairColor: "#222", shirtColor: "#333"
   },
   {
-    id: 18, name: "???",       role: "ATK", unlocked: false,
+    id: 18, name: "Miranda",           role: "MID", unlocked: false,
     stats: { speed: 0, shooting: 0, defense: 0, passing: 0 },
     skinColor: "#555", hairColor: "#222", shirtColor: "#333"
   },
   {
-    id: 19, name: "???",       role: "ATK", unlocked: false,
+    id: 19, name: "Leonardo Martins",  role: "ATK", unlocked: false,
     stats: { speed: 0, shooting: 0, defense: 0, passing: 0 },
     skinColor: "#555", hairColor: "#222", shirtColor: "#333"
   },
+  // Santiago can play GK or MID — each position unlocks a different ultimate
   {
-    id: 20, name: "Santiago",  role: "ATK", unlocked: false,
+    id: 20, name: "Santiago",  role: "GK", dualRole: "MID", unlocked: false,
     stats: { speed: 95, shooting: 95, defense: 60, passing: 88 },
     skinColor: "#d4956a", hairColor: "#2c1810", shirtColor: "#1a4fff"
   }
@@ -205,5 +206,9 @@ const CHARACTERS = [
 CHARACTERS.forEach(c => {
   if (c.unlocked) {
     c.abilities = makeAbilities(c.role);
+    // Dual-role characters get a second set of abilities for their alt position
+    if (c.dualRole) {
+      c.altAbilities = makeAbilities(c.dualRole);
+    }
   }
 });
