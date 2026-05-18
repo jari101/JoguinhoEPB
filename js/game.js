@@ -16,12 +16,12 @@ const FIELD = {
 };
 
 const PHYS = {
-  playerRadius: 18,
+  playerRadius: 27,
   ballRadius: 10,
   friction: 0.982,
-  maxBallSpeed: 130,
-  playerSpeed: 26,
-  kickForce: 90,
+  maxBallSpeed: 260,
+  playerSpeed: 52,
+  kickForce: 180,
   kickRange: 40,
   kickCooldown: 0.45,
   saveRange: 54        // base GK range multiplier base
