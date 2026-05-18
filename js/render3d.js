@@ -9,6 +9,8 @@ let _ballGroup = null;
 let _playerMeshes = new Map(); // player id → { group, lLeg, rLeg }
 let _ready = false;
 let _animClock = 0;
+let _cameraView = 'third'; // 'third' | 'first'
+let _playerFacingAngle = 0;
 
 function wx(gx) { return (gx - FIELD.logicalW / 2) * SCALE3D; }
 function wz(gy) { return (gy - FIELD.logicalH / 2) * SCALE3D; }
@@ -36,9 +38,9 @@ function init3D() {
   _scene.background = new THREE.Color(0x020c03);
   _scene.fog = new THREE.Fog(0x020c03, 22, 38);
 
-  _camera = new THREE.PerspectiveCamera(42, w / h, 0.1, 100);
-  _camera.position.set(0, 9.5, 6.8);
-  _camera.lookAt(0, 0, -0.5);
+  _camera = new THREE.PerspectiveCamera(65, w / h, 0.1, 100);
+  _camera.position.set(0, 2.5, 3.5);
+  _camera.lookAt(0, 0, 0);
 
   // Lighting
   _scene.add(new THREE.AmbientLight(0xffffff, 0.55));
@@ -372,6 +374,50 @@ function updateScene3D(G, dt) {
       }
     });
   });
+
+  // Camera
+  if (G.playerObj) _updateCamera3D(G, toX, toZ, dt);
+}
+
+// ── CAMERA VIEW ───────────────────────────────────────────────
+function toggleCameraView() {
+  _cameraView = _cameraView === 'third' ? 'first' : 'third';
+  if (_camera) {
+    _camera.fov = _cameraView === 'first' ? 85 : 65;
+    _camera.updateProjectionMatrix();
+  }
+  return _cameraView;
+}
+
+function _updateCamera3D(G, toX, toZ, dt) {
+  const player = G.playerObj;
+  const px = toX(player.x);
+  const pz = toZ(player.y);
+
+  const meshData = _playerMeshes.get(player.id);
+  if (meshData) {
+    _playerFacingAngle = meshData.group.rotation.y;
+    // Hide player mesh in first-person so it doesn't clip the view
+    meshData.group.visible = _cameraView !== 'first';
+  }
+
+  const fsin = Math.sin(_playerFacingAngle);
+  const fcos = Math.cos(_playerFacingAngle);
+
+  if (_cameraView === 'first') {
+    _camera.position.set(px + fsin * 0.12, 0.60, pz + fcos * 0.12);
+    _camera.lookAt(px + fsin * 6, 0.15, pz + fcos * 6);
+  } else {
+    const dist = 3.5;
+    const height = 2.2;
+    const targetX = px - fsin * dist;
+    const targetZ = pz - fcos * dist;
+    const alpha = 1 - Math.exp(-7 * dt);
+    _camera.position.x += (targetX - _camera.position.x) * alpha;
+    _camera.position.y += (height  - _camera.position.y) * alpha;
+    _camera.position.z += (targetZ - _camera.position.z) * alpha;
+    _camera.lookAt(px, 0.3, pz);
+  }
 }
 
 // ── RENDER ────────────────────────────────────────────────────
@@ -396,4 +442,10 @@ function resize3D() {
 function cleanup3D() {
   _playerMeshes.forEach(({ group }) => { if (_scene) _scene.remove(group); });
   _playerMeshes.clear();
+  _cameraView = 'third';
+  _playerFacingAngle = 0;
+  if (_camera) {
+    _camera.fov = 65;
+    _camera.updateProjectionMatrix();
+  }
 }

@@ -160,6 +160,15 @@ function setupEvents() {
       if (appState === 'game') pauseGame();
       else if (appState === 'pause') resumeGame();
     }
+    if (e.code === 'KeyV' && appState === 'game' && G && !G.paused) {
+      const view = toggleCameraView();
+      const indicator = document.getElementById('cam-view-indicator');
+      if (indicator) {
+        indicator.textContent = view === 'first' ? '1ST PERSON' : '3RD PERSON';
+        indicator.classList.add('cam-view-flash');
+        setTimeout(() => indicator.classList.remove('cam-view-flash'), 800);
+      }
+    }
   });
   window.addEventListener('keyup', e => { keys[e.code] = false; });
 
@@ -462,6 +471,9 @@ function startGame(charId) {
   els.ultimateName.textContent = charData.abilities.ultimate.name;
   els.ctrlSpecialName.textContent  = charData.abilities.special.name;
   els.ctrlUltimateName.textContent = charData.abilities.ultimate.name;
+
+  const camIndicator = document.getElementById('cam-view-indicator');
+  if (camIndicator) camIndicator.textContent = '3RD PERSON';
 
   showScreen('game');
   // Init 3D after the container is visible so dimensions are correct
