@@ -109,7 +109,9 @@ window.addEventListener('load', () => {
     resultText:    document.getElementById('result-text'),
     finalScore:    document.getElementById('final-score'),
     kickoffOverlay:document.getElementById('kickoff-overlay'),
-    kickoffText:   document.getElementById('kickoff-text')
+    kickoffText:   document.getElementById('kickoff-text'),
+    ctrlSpecialName: document.getElementById('ctrl-special-name'),
+    ctrlUltimateName: document.getElementById('ctrl-ultimate-name')
   };
 
   setupEvents();
@@ -424,6 +426,8 @@ function startGame(charId) {
   els.pHudRole.textContent = ROLES[charData.role].label;
   els.specialName.textContent  = charData.abilities.special.name;
   els.ultimateName.textContent = charData.abilities.ultimate.name;
+  els.ctrlSpecialName.textContent  = charData.abilities.special.name;
+  els.ctrlUltimateName.textContent = charData.abilities.ultimate.name;
 
   showScreen('game');
   requestAnimationFrame(gameLoop);
