@@ -26,7 +26,8 @@ const PHYS = {
   kickCooldown: 0.45,
   saveRange: 54,       // base GK range multiplier base
   tackleRange: 48,
-  tackleCooldown: 1.0
+  tackleCooldown: 1.0,
+  playerBuffer: 5   // personal space padding beyond playerRadius
 };
 
 const MATCH = {
@@ -1127,7 +1128,7 @@ function updatePhysics(dt) {
         const dx = b.x - a.x;
         const dy = b.y - a.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        const minD = PHYS.playerRadius * 2;
+        const minD = (PHYS.playerRadius + PHYS.playerBuffer) * 2;
         if (dist < minD && dist > 0) {
           const push = (minD - dist) / 2;
           const nx = dx / dist;
